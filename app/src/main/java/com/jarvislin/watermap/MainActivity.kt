@@ -4,26 +4,24 @@ import android.arch.lifecycle.MutableLiveData
 import android.arch.lifecycle.Observer
 import android.arch.lifecycle.ViewModel
 import android.arch.lifecycle.ViewModelProviders
-import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
 import android.preference.PreferenceManager
+import android.support.v7.app.AppCompatActivity
 import com.jarvislin.watermap.data.models.Feature
+import io.reactivex.Flowable
 import io.reactivex.Single
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.schedulers.Schedulers
 import kotlinx.android.synthetic.main.activity_main.*
 import org.osmdroid.config.Configuration
-import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.GeoPoint
-import org.osmdroid.views.overlay.mylocation.GpsMyLocationProvider
-import org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay
-import org.osmdroid.views.overlay.compass.InternalCompassOrientationProvider
-import org.osmdroid.views.overlay.compass.CompassOverlay
+import org.osmdroid.views.overlay.Marker
+import java.util.concurrent.TimeUnit
 
 
 class MainActivity : AppCompatActivity() {
 
-    lateinit var mapViewModel: MapViewModel
+    private lateinit var mapViewModel: MapViewModel
 
     companion object {
         private val TAIPEI = GeoPoint(25.0469077, 121.5363626)
@@ -32,8 +30,8 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        // map config
         Configuration.getInstance().load(this, PreferenceManager.getDefaultSharedPreferences(this))
-        //setting this before the layout is inflated is a good idea
 
         setContentView(R.layout.activity_main)
 
@@ -48,26 +46,31 @@ class MainActivity : AppCompatActivity() {
 
     private fun addFeatures(features: List<Feature>?) {
         features?.let {
-            
+            map.overlays.clear()
+            Flowable.fromIterable(it)
+                    .subscribeOn(Schedulers.io())
+                    .map {
+                        val marker = Marker(map)
+                        marker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+                        marker.position = GeoPoint(it.geometry.coordinates[1], it.geometry.coordinates[0])
+                        marker.snippet = it.property.comments.lastOrNull()?.html
+                        marker
+                    }
+                    .delay(25, TimeUnit.MILLISECONDS)
+                    .observeOn(AndroidSchedulers.mainThread())
+                    .subscribe({
+                        map.overlays.add(it)
+                        map.invalidate()
+                    }, {})
         }
     }
 
     private fun initMap() {
-        map.setTileSource(TileSourceFactory.MAPNIK)
-
         map.setBuiltInZoomControls(false)
         map.setMultiTouchControls(true)
         val mapController = map.controller
         mapController.setZoom(12.0)
         mapController.setCenter(TAIPEI)
-
-        val overlay = MyLocationNewOverlay(GpsMyLocationProvider(this), map)
-        overlay.enableMyLocation()
-        map.overlays.add(overlay)
-
-        val compass = CompassOverlay(this, InternalCompassOrientationProvider(this), map)
-        compass.enableCompass()
-        map.overlays.add(compass)
     }
 
     override fun onResume() {
@@ -88,7 +91,7 @@ class MapViewModel(private val repository: MapRepository = MapRepository()) : Vi
     }
 }
 
-class MapRepository : BaseReposotory() {
+class MapRepository : BaseRepository() {
     fun search(): Single<List<Feature>> = api().search().map { it.features }
 
 }

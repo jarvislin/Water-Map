@@ -23,7 +23,7 @@ data class Geometry(
         @SerializedName("type")
         val type: String,
         @SerializedName("coordinates")
-        val coordinates: List<Long>
+        val coordinates: List<Double>
 )
 
 data class Property(

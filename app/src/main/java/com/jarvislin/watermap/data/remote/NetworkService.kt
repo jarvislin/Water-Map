@@ -14,8 +14,9 @@ class NetworkService {
     private val retrofit: Retrofit
 
     companion object {
-        const val API_DEV_URL = "https://master.apis.dev.openstreetmap.org/"
-        const val API_PRO_URL = "https://api.openstreetmap.org/"
+        //        const val API_DEV_URL = "https://master.apis.dev.openstreetmap.org/api/" 會抓不到資料，暫時用正式 API
+        const val API_DEV_URL = "https://api.openstreetmap.org/api/"
+        const val API_PRO_URL = "https://api.openstreetmap.org/api/"
         const val API_VERSION = "0.6/"
         const val DATE_FORMAT = "yyyy-MM-dd HH:mm:ss zzz"
     }
